@@ -2,6 +2,7 @@ package tterrag.stupidcleaner;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -17,6 +18,7 @@ import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.apache.logging.log4j.message.Message;
+import org.apache.logging.log4j.message.StringFormattedMessage;
 
 import com.google.common.collect.Lists;
 
@@ -40,7 +42,10 @@ public final class StupidFilter extends AbstractFilter {
 
     @Override
     public Result filter(final Logger logger, final Level level, final Marker marker, final String msg, final Object... params) {
-        return filter(msg);
+        if (msg != null) {
+            return filter(new StringFormattedMessage(msg, params).getFormattedMessage());
+        }
+        return onMismatch;
     }
 
     @Override
@@ -48,7 +53,9 @@ public final class StupidFilter extends AbstractFilter {
         if (msg == null) {
             return onMismatch;
         }
-        return filter(msg.toString());
+        Result msgRes = filter(msg.toString());
+        Result throwableRes = filter(t);
+        return throwableRes == onMatch ? throwableRes : msgRes;
     }
 
     @Override
@@ -56,7 +63,9 @@ public final class StupidFilter extends AbstractFilter {
         if (msg == null) {
             return onMismatch;
         }
-        return filter(msg.getFormattedMessage());
+        Result msgRes = filter(msg.getFormattedMessage());
+        Result throwableRes = filter(t);
+        return throwableRes == onMatch ? throwableRes : msgRes;
     }
 
     @Override
@@ -64,6 +73,22 @@ public final class StupidFilter extends AbstractFilter {
         return filter(event.getMessage().getFormattedMessage());
     }
 
+    Result filter(Throwable t) {
+        List<String> stacktrace = Lists.newArrayList();
+        t.printStackTrace(new PrintStream(System.err) {
+            @Override
+            public void println(Object o) {
+                stacktrace.add(String.valueOf(o));
+            }
+        });
+        for (String s : stacktrace) {
+            if (filter(s) == onMatch) {
+                return onMatch;
+            }
+        }
+        return onMismatch;
+    }
+    
     Result filter(final String msg) {
         if (msg == null) {
             return onMismatch;

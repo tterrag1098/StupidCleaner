@@ -97,6 +97,8 @@ public class StupidCleaner {
 
         System.setOut(new FilteredPrintStream(System.out));
         System.setErr(new FilteredPrintStream(System.err));
+        
+        logger.info("lel", new NullPointerException());
     }
     
     @Instance("stupidcleaner")
