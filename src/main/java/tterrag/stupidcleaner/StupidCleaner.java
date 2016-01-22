@@ -23,6 +23,7 @@ import net.minecraftforge.fml.relauncher.FMLRelaunchLog;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraftforge.fml.relauncher.ReflectionHelper.UnableToFindFieldException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -33,17 +34,16 @@ import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Sets;
 
-
-@Mod(modid = "stupidcleaner", name = "StupidCleaner", version = "@VERSION@", dependencies = "before:*")
+@Mod(modid = "stupidcleaner", name = "StupidCleaner", version = "@VERSION@", dependencies = "before:*", acceptedMinecraftVersions = "[1.8,1.9)")
 public class StupidCleaner {
-    
+
     static final Logger logger = LogManager.getLogger("StupidCleaner");
     static final StupidFilter filter;
-    
+
     private static class FilteredPrintStream extends PrintStream {
 
         private Set<String> filtered = Sets.newHashSet();
-        
+
         public FilteredPrintStream(OutputStream out) {
             super(out);
         }
@@ -61,14 +61,14 @@ public class StupidCleaner {
                 super.print(s);
             }
         }
-        
+
         @Override
         public void println(Object x) {
             if (allow(String.valueOf(x))) {
                 super.println(x);
             }
         }
-        
+
         @Override
         public void println(String x) {
             if (allow(x)) {
@@ -86,23 +86,22 @@ public class StupidCleaner {
             return true;
         }
     }
-    
+
     static {
         logger.info("Injecting logger config");
 
         LoggerContext context = (LoggerContext) LogManager.getContext(false);
         context.addFilter(filter = StupidFilter.createFilter());
-        
-        ((org.apache.logging.log4j.core.Logger)FMLRelaunchLog.log.getLogger()).getContext().addFilter(filter);
+
+        ((org.apache.logging.log4j.core.Logger) FMLRelaunchLog.log.getLogger()).getContext().addFilter(filter);
 
         System.setOut(new FilteredPrintStream(System.out));
         System.setErr(new FilteredPrintStream(System.err));
     }
-    
+
     @Instance("stupidcleaner")
     @Getter
     private static StupidCleaner instance;
-    
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
@@ -114,16 +113,20 @@ public class StupidCleaner {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     @SneakyThrows
     public void onModelBakePost(ModelBakeEvent event) {
-        Map<ResourceLocation, Exception> modelErrors = (Map<ResourceLocation, Exception>) ReflectionHelper.getPrivateValue(ModelLoader.class, event.modelLoader, "loadingExceptions");
-        Set<ModelResourceLocation> missingVariants = (Set<ModelResourceLocation>) ReflectionHelper.getPrivateValue(ModelLoader.class, event.modelLoader, "missingVariants");
-        Multiset<String> suppressed = HashMultiset.create();
-        
-        suppressed.addAll(modelErrors.keySet().stream().map(r -> r.getResourceDomain()).collect(Collectors.toList()));
-        suppressed.addAll(missingVariants.stream().map(r -> r.getResourceDomain()).collect(Collectors.toList()));
-        
-        suppressed.entrySet().forEach(e -> logger.error("There were {} model errors for domain {}. Suppressing...", e.getCount(), e.getElement()));
-        
-        modelErrors.clear();
-        missingVariants.clear();
+        try {
+            Map<ResourceLocation, Exception> modelErrors = (Map<ResourceLocation, Exception>) ReflectionHelper.getPrivateValue(ModelLoader.class, event.modelLoader, "loadingExceptions");
+            Set<ModelResourceLocation> missingVariants = (Set<ModelResourceLocation>) ReflectionHelper.getPrivateValue(ModelLoader.class, event.modelLoader, "missingVariants");
+            Multiset<String> suppressed = HashMultiset.create();
+
+            suppressed.addAll(modelErrors.keySet().stream().map(r -> r.getResourceDomain()).collect(Collectors.toList()));
+            suppressed.addAll(missingVariants.stream().map(r -> r.getResourceDomain()).collect(Collectors.toList()));
+
+            suppressed.entrySet().forEach(e -> logger.error("There were {} model errors for domain {}. Suppressing...", e.getCount(), e.getElement()));
+
+            modelErrors.clear();
+            missingVariants.clear();
+        } catch (UnableToFindFieldException e) {
+            logger.error("Could not initialize model error interceptor. Forge is likely too old!");
+        }
     }
 }
