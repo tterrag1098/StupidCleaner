@@ -74,16 +74,19 @@ public final class StupidFilter extends AbstractFilter {
     }
 
     Result filter(Throwable t) {
-        List<String> stacktrace = Lists.newArrayList();
-        t.printStackTrace(new PrintStream(System.err) {
-            @Override
-            public void println(Object o) {
-                stacktrace.add(String.valueOf(o));
-            }
-        });
-        for (String s : stacktrace) {
-            if (filter(s) == onMatch) {
-                return onMatch;
+        if (t != null) {
+            List<String> stacktrace = Lists.newArrayList();
+            t.printStackTrace(new PrintStream(System.err) {
+
+                @Override
+                public void println(Object o) {
+                    stacktrace.add(String.valueOf(o));
+                }
+            });
+            for (String s : stacktrace) {
+                if (filter(s) == onMatch) {
+                    return onMatch;
+                }
             }
         }
         return onMismatch;
