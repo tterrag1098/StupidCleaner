@@ -34,7 +34,7 @@ import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Sets;
 
-@Mod(modid = "stupidcleaner", name = "StupidCleaner", version = "@VERSION@", dependencies = "before:*", acceptedMinecraftVersions = "[1.8,1.9)")
+@Mod(modid = "stupidcleaner", name = "StupidCleaner", version = "@VERSION@", dependencies = "before:*", acceptedMinecraftVersions = "[1.8,1.10)")
 public class StupidCleaner {
 
     static final Logger logger = LogManager.getLogger("StupidCleaner");
@@ -125,7 +125,7 @@ public class StupidCleaner {
 
             modelErrors.clear();
             missingVariants.clear();
-        } catch (UnableToFindFieldException e) {
+        } catch (Throwable e) {
             logger.error("Could not initialize model error interceptor. Forge is likely too old!");
         }
     }
